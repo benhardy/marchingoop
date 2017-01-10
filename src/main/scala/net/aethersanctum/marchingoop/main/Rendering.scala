@@ -7,6 +7,8 @@ import javax.imageio.ImageIO
 
 
 class Rendering(val screenWidth:Int, val screenHeight:Int) {
+  val aspectRatio = screenHeight.toDouble / screenWidth
+
   val image = new BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_ARGB)
 
   val ctx = image.getGraphics.asInstanceOf[Graphics2D]
