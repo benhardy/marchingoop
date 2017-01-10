@@ -55,8 +55,8 @@
                 <version>3.2.1</version>
                 <configuration>
                     <scalaVersion>${scala.version}</scalaVersion>
-                    <mainSourceDir>src/main/java</mainSourceDir>
-                    <testSourceDir>src/test/java</testSourceDir>
+                    <mainSourceDir>src/main/scala</mainSourceDir>
+                    <testSourceDir>src/test/scala</testSourceDir>
                 </configuration>
                 <executions>
                     <execution>
