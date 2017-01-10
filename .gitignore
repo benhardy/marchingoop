@@ -5,3 +5,4 @@ target/
 *.swp
 *.png
 *.class
+.DS_Store
