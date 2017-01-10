@@ -18,8 +18,7 @@ object Hello {
         val ray = camera.rayForPixel(xPixel, yPixel)
         val hit = location + Vector(ray.x, 0, ray.z) * location.y / ray.y
         val color = if (hit.z > 0) {
-          val bit = (hit.x.toInt ^ hit.z.toInt) & 1
-          if (bit > 0) WHITE else BLACK
+          checkerPattern(hit)
         } else {
           BLUE
         }
@@ -27,5 +26,13 @@ object Hello {
       }
     }
     rendering.save("hello.png")
+  }
+
+  private def checkerPattern(hit: Vector) = {
+    val xp = if (hit.x - math.floor(hit.x) < 0.5) 0 else 1
+    val yp = if (hit.y - math.floor(hit.y) < 0.5) 0 else 1
+    val zp = if (hit.z - math.floor(hit.z) < 0.5) 0 else 1
+    val bit = xp ^ yp ^ zp
+    if (bit > 0) WHITE else BLACK
   }
 }
