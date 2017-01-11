@@ -34,19 +34,25 @@ class GpuDemo(scene:Scene) {
     "    double distance = epsilon*2;\n" +
     "    double march_ratio = 0.5;\n" +
     "    double4 here;\n" +
+    "    int closestObject = -1;\n" +
     "    int whoGotHit = -1;\n" +
+    "    double bestCloseness = 100000;\n" +
     "    for (int step = 0; step < step_max && distance > epsilon; step++) {\n" +
     "      here = eye + (look * distance);" +
-    "      double howFar;\n" +
+    "      double closeness;\n" +
     "      for (int index = 0; index < scene_top_level_count; index++) {\n" +
     "        int objectId = scene_top_level_ids[index];\n" +
-    "        howFar = distance_of(objectId, here);\n" +
-    "        if (howFar < epsilon) {" +
-    "          whoGotHit = objectId;" +
-    "          break;" +
+    "        closeness = distance_of(objectId, here);\n" +
+    "        if (closeness < bestCloseness) {" +
+    "          closestObject = objectId;" +
+    "          bestCloseness = closeness;" +
+    "          if (closeness < epsilon) {" +
+    "            whoGotHit = objectId;" +
+    "            break;" +
+    "          }\n" +
     "        }\n" +
     "      }\n" +
-    "      distance += howFar * march_ratio;\n" +
+    "      distance += bestCloseness * march_ratio;\n" +
     "    }" +
     "    if (whoGotHit >= 0) {\n" +
     "        color = checker(here);\n" +
