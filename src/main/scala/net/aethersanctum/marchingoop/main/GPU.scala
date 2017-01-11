@@ -2,22 +2,14 @@ package net.aethersanctum.marchingoop.main
 
 import java.awt.Color
 
+import net.aethersanctum.marchingoop.main.Pigment.{BLACK, Checker, WHITE}
 import org.jocl.CL._
 import org.jocl._
 
 class GpuDemo(scene:Scene, rendering:Rendering) {
 
   val kernelMain = "" +
-    "__constant double4 BLACK = { 0, 0, 0, 1 };\n" +
-    "__constant double4 WHITE = { 1, 1, 1, 1 };\n" +
-    "\n" +
-    "double4 checker(double4 position) {\n" +
-    "  int px = position.x - floor(position.x) > 0.5 ? 1 :0;\n" +
-    "  int py = position.y - floor(position.y) > 0.5 ? 1 :0;\n" +
-    "  int pz = position.z - floor(position.z) > 0.5 ? 1 :0;\n" +
-    "  return px ^ py ^ pz ? WHITE : BLACK;\n" +
-    "}\n" +
-    SceneItem.write(scene.objects) +
+    SceneEntity.write(scene.objects) +
     "\n" +
     "__kernel void " +
     "sampleKernel(__global double *eye_p,\n" +
@@ -54,14 +46,7 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "      }\n" +
     "      distance += bestCloseness * march_ratio;\n" +
     "    }" +
-    "    if (whoGotHit == 1) {\n" +
-    "        color = checker(here);\n" +
-    "    } else if (whoGotHit > 0) {\n" +
-    "        color = WHITE;\n" +
-    "    } else {\n" +
-    "      color.x = fmaxf(0, 1- look.y*8);\n" + // sky
-    "      color.z = fmaxf(0, 1- look.y*4);\n" +
-    "    } " +
+    "    color = pigment_of(whoGotHit, here);\n" +
     "    int out = 4* in;\n" +
     "    results[out] = color.x;\n" +
     "    results[out+1] = color.y;\n" +
@@ -172,11 +157,12 @@ object GpuDemo {
     * @param args Not used
     */
   def main(args: Array[String]) = {
+
     val rendering = new Rendering(640, 480)
     val camera = new Camera(rendering = rendering, location = Vector(0, 1, -10), lookAt = Vector.Z)
     val scene = new Scene(camera, List(
-      Plane(Vector.Y, 0),
-      Sphere(Vector(-1, 1, 4), 5)
+      Plane(Vector.Y, 0, Checker(BLACK, WHITE)),
+      Sphere(Vector(-1, 1, 2), 5, Pigment.RED)
     ))
     val demo = new GpuDemo(scene, rendering)
     try {
@@ -185,7 +171,6 @@ object GpuDemo {
       case e: CLException if e.getStatus == CL_BUILD_PROGRAM_FAILURE => {
         println(e.getMessage)
       }
-      case e => throw e
     }
     println("\nSaving file")
     rendering.save("hello.png")
