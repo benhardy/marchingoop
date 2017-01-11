@@ -2,7 +2,7 @@ package net.aethersanctum.marchingoop.main
 
 import java.awt.Color
 
-import net.aethersanctum.marchingoop.main.Pigment.{BLACK, Checker, WHITE}
+import net.aethersanctum.marchingoop.main.Pigment.Grid
 import org.jocl.CL._
 import org.jocl._
 
@@ -160,8 +160,9 @@ object GpuDemo {
 
     val rendering = new Rendering(640, 480)
     val camera = new Camera(rendering = rendering, location = Vector(0, 1, -10), lookAt = Vector.Z)
+    val MAGENTA = Pigment.RGB(1,0,1)
     val scene = new Scene(camera, List(
-      Plane(Vector.Y, 0, Checker(BLACK, WHITE)),
+      Plane(Vector.Y, 0, Grid(MAGENTA)),
       Sphere(Vector(-1, 1, 2), 5, Pigment.RED)
     ))
     val demo = new GpuDemo(scene, rendering)

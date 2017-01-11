@@ -33,6 +33,16 @@ object Pigment {
       "  int pz = point.z - floor(point.z) > 0.5 ? 1 :0;\n" +
       s"  return px ^ py ^ pz ? ${pigmentA.functionName}(point) : ${pigmentB.functionName}(point);"
   }
+  case class Grid(pigmentA: Pigment) extends Pigment {
+    override def supportingDeclarations = pigmentA.supportingDeclarations ++
+      List(pigmentA.functionWhole)
+
+    override def functionBody = "  double px = fabs(point.x - floor(point.x) - 0.5);\n" +
+      "  double py = fabs(point.y - floor(point.y) - 0.5);\n" +
+      "  double pz = fabs(point.z - floor(point.z) - 0.5);\n" +
+      "  double least = pow(1- fminf(px, fminf(py, pz)) * 2, 4);\n" +
+      s"  return ${pigmentA.functionName}(point) * least;"
+  }
   val WHITE = RGB(1,1,1)
   val BLACK = RGB(0,0,0)
   val RED = RGB(1,0,0)
