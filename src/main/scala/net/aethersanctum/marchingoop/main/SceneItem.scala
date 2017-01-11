@@ -58,22 +58,28 @@ object SceneEntity {
   def write(items: Seq[SceneObject]) = {
     val buf = new StringBuilder
     val done = mutable.Set[String]()
-    buf.append(s"__constant scene_max_item_id = ${maxId};\n")
+    buf.append(s"__constant int scene_max_item_id = ${maxId};\n")
     buf.append(s"__constant int scene_top_level_ids[] = {${items.map(_.id).mkString(", ")}};\n")
     buf.append(s"__constant int scene_top_level_count = ${items.size};\n\n")
-    items.foreach(item => {
-      item.supportingDeclarations.foreach(dec =>
-        if (!done.contains(dec)) {
-          buf.append(dec)
-          done.add(dec)
-        }
-      )
-      val whole = item.functionWhole
-      if (!done.contains(whole)) {
-        buf.append(whole)
-        done.add(whole)
+
+    def writeOnce(dec: String) = {
+      if (!done.contains(dec)) {
+        buf.append(dec)
+        done.add(dec)
       }
+    }
+
+    items.foreach(item => {
+      item.supportingDeclarations.foreach(writeOnce)
+      writeOnce(item.functionWhole)
     })
+    val defaultPigmentName = Pigment.DEFAULT.functionWhole
+    if (!done.contains(defaultPigmentName)) {
+      Pigment.DEFAULT.supportingDeclarations.foreach(writeOnce)
+      writeOnce(Pigment.DEFAULT.functionWhole)
+    }
+
+    // write switching functions
     buf.append("double distance_of(int objectId, double4 pos) {\n")
     buf.append("   switch(objectId) {\n")
     items.foreach(item => {
