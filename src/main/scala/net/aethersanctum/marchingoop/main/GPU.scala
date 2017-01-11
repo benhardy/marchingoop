@@ -5,7 +5,7 @@ import java.awt.Color
 import org.jocl.CL._
 import org.jocl._
 
-class GpuDemo(scene:Scene) {
+class GpuDemo(scene:Scene, rendering:Rendering) {
 
   val kernelMain = "" +
     "__constant double4 BLACK = { 0, 0, 0, 1 };\n" +
@@ -70,8 +70,8 @@ class GpuDemo(scene:Scene) {
 
   println(kernelMain)
 
-  val lookVectorsPerRow = new Array[Double](4 * scene.rendering.screenWidth)
-  val colorVectorsPerRow = new Array[Double](4 * scene.rendering.screenWidth)
+  val lookVectorsPerRow = new Array[Double](4 * rendering.screenWidth)
+  val colorVectorsPerRow = new Array[Double](4 * rendering.screenWidth)
 
   def run = generate(kernelMain)
 
@@ -92,7 +92,7 @@ class GpuDemo(scene:Scene) {
     // Allocate the memory objects for the input- and output data
     val memObjects = new Array[cl_mem](3)
     val singleVectorSize = Sizeof.cl_double * 4
-    val rowArraySize = singleVectorSize * scene.rendering.screenWidth
+    val rowArraySize = singleVectorSize * rendering.screenWidth
 
     val eyeBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, singleVectorSize, eyePointer, null)
     val lookBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, rowArraySize, lookPointer, null)
@@ -109,8 +109,8 @@ class GpuDemo(scene:Scene) {
 
     // Write the inputs
     clEnqueueWriteBuffer(commandQueue, eyeBuffer, CL_TRUE, 0, singleVectorSize, eyePointer, 0, null, null)
-    for (row <- 0 until scene.rendering.screenHeight) {
-      printf("\rrendering row %d/%d", row, scene.rendering.screenHeight)
+    for (row <- 0 until rendering.screenHeight) {
+      printf("\rrendering row %d/%d", row, rendering.screenHeight)
       setupLookVectors(row)
       clEnqueueWriteBuffer(commandQueue, lookBuffer, CL_TRUE, 0, rowArraySize, lookPointer, 0, null, null)
 
@@ -120,7 +120,7 @@ class GpuDemo(scene:Scene) {
       clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(resultBuffer))
 
       // Set the work-item dimensions
-      val global_work_size = Array[Long](scene.rendering.screenWidth)
+      val global_work_size = Array[Long](rendering.screenWidth)
       val local_work_size = Array[Long](1)
 
       // Execute the kernel
@@ -140,25 +140,23 @@ class GpuDemo(scene:Scene) {
     clReleaseProgram(program)
     clReleaseCommandQueue(commandQueue)
     clReleaseContext(context)
-    println("\nSaving file")
-    scene.rendering.save("hello.png")
     println("\nDone")
   }
 
   private def bound(x: Float, min: Float, max:Float) = if (x < min) min else if (x > max) max else x
 
   private def paintResults(row: Int) = {
-    for (x <- 0 until scene.rendering.screenWidth) {
+    for (x <- 0 until rendering.screenWidth) {
       val color = new Color(
         bound(colorVectorsPerRow(x * 4 + 0).toFloat, 0, 1),
         bound(colorVectorsPerRow(x * 4 + 1).toFloat, 0, 1),
         bound(colorVectorsPerRow(x * 4 + 2).toFloat,0, 1))
-      scene.rendering.setPixel(x, row, color)
+      rendering.setPixel(x, row, color)
     }
   }
 
   private def setupLookVectors(row: Int) = {
-    for (x <- 0 until scene.rendering.screenWidth) {
+    for (x <- 0 until rendering.screenWidth) {
       val looking = scene.camera.rayForPixel(x, row)
       lookVectorsPerRow(x * 4 + 0) = looking.x
       lookVectorsPerRow(x * 4 + 1) = looking.y
@@ -176,11 +174,11 @@ object GpuDemo {
   def main(args: Array[String]) = {
     val rendering = new Rendering(640, 480)
     val camera = new Camera(rendering = rendering, location = Vector(0, 1, -10), lookAt = Vector.Z)
-    val scene = new Scene(camera, rendering, List(
+    val scene = new Scene(camera, List(
       Plane(Vector.Y, 0),
       Sphere(Vector(-1, 1, 4), 5)
     ))
-    val demo = new GpuDemo(scene)
+    val demo = new GpuDemo(scene, rendering)
     try {
       demo.run
     } catch {
@@ -189,6 +187,8 @@ object GpuDemo {
       }
       case e => throw e
     }
+    println("\nSaving file")
+    rendering.save("hello.png")
   }
 }
 
