@@ -50,3 +50,12 @@ case class Plane(normal:Vector, offset:Double) extends SceneItem {
   override def distanceFunctionBody = s"return dot(${name}_normal, point) + ${name}_offset;"
 }
 
+case class Sphere(center:Vector, radius:Double) extends SceneItem {
+  override def name = "sphere" + id
+  override def supportingDeclarations = List(
+    s"__constant double4 ${name}_center = {${center.x}, ${center.y}, ${center.z}, 0};\n",
+    s"__constant double ${name}_radius = ${radius};\n"
+  )
+  override def distanceFunctionBody = s"return distance(${name}_center, point) - ${name}_radius;"
+}
+

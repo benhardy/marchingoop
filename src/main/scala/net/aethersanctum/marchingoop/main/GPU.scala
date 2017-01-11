@@ -43,19 +43,21 @@ class GpuDemo(scene:Scene) {
     "      for (int index = 0; index < scene_top_level_count; index++) {\n" +
     "        int objectId = scene_top_level_ids[index];\n" +
     "        closeness = distance_of(objectId, here);\n" +
-    "        if (closeness < bestCloseness) {" +
-    "          closestObject = objectId;" +
-    "          bestCloseness = closeness;" +
-    "          if (closeness < epsilon) {" +
-    "            whoGotHit = objectId;" +
-    "            break;" +
+    "        if (closeness < bestCloseness) {\n" +
+    "          closestObject = objectId;\n" +
+    "          bestCloseness = closeness;\n" +
+    "          if (closeness < epsilon) {\n" +
+    "            whoGotHit = objectId;\n" +
+    "            break;\n" +
     "          }\n" +
     "        }\n" +
     "      }\n" +
     "      distance += bestCloseness * march_ratio;\n" +
     "    }" +
-    "    if (whoGotHit >= 0) {\n" +
+    "    if (whoGotHit == 1) {\n" +
     "        color = checker(here);\n" +
+    "    } else if (whoGotHit > 0) {\n" +
+    "        color = WHITE;\n" +
     "    } else {\n" +
     "      color.x = fmaxf(0, 1- look.y*8);\n" + // sky
     "      color.z = fmaxf(0, 1- look.y*4);\n" +
@@ -173,9 +175,10 @@ object GpuDemo {
     */
   def main(args: Array[String]) = {
     val rendering = new Rendering(640, 480)
-    val camera = new Camera(rendering = rendering, location = Vector(0, 10, 0), lookAt = Vector.Z)
+    val camera = new Camera(rendering = rendering, location = Vector(0, 1, -10), lookAt = Vector.Z)
     val scene = new Scene(camera, rendering, List(
-      Plane(Vector.Y, 0)
+      Plane(Vector.Y, 0),
+      Sphere(Vector(-1, 1, 4), 5)
     ))
     val demo = new GpuDemo(scene)
     try {
