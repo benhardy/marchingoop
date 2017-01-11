@@ -17,6 +17,7 @@ class GpuDemo(scene:Scene) {
     "  int pz = position.z - floor(position.z) > 0.5 ? 1 :0;\n" +
     "  return px ^ py ^ pz ? WHITE : BLACK;\n" +
     "}\n" +
+    SceneItem.write(scene.objects) +
     "\n" +
     "__kernel void " +
     "sampleKernel(__global double *eye_p,\n" +
@@ -36,7 +37,7 @@ class GpuDemo(scene:Scene) {
     "    int whoGotHit = -1;\n" +
     "    for (int step = 0; step < step_max && distance > epsilon; step++) {\n" +
     "      here = eye + (look * distance);\n" +
-    "      double howFar = here.y;\n" + // for a plane
+    "      double howFar = distance_of(1, here);\n" + // for a plane
     "      if (howFar < epsilon) {" +
     "        whoGotHit = 1;" +
     "        break;" +
@@ -161,7 +162,9 @@ object GpuDemo {
   def main(args: Array[String]) = {
     val rendering = new Rendering(640, 480)
     val camera = new Camera(rendering = rendering, location = Vector(0, 10, 0), lookAt = Vector.Z)
-    val scene = new Scene(camera, rendering)
+    val scene = new Scene(camera, rendering, List(
+      Plane(Vector.Y, 0)
+    ))
     val demo = new GpuDemo(scene)
     try {
       demo.run
