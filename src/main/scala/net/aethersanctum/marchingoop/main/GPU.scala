@@ -36,15 +36,19 @@ class GpuDemo(scene:Scene) {
     "    double4 here;\n" +
     "    int whoGotHit = -1;\n" +
     "    for (int step = 0; step < step_max && distance > epsilon; step++) {\n" +
-    "      here = eye + (look * distance);\n" +
-    "      double howFar = distance_of(1, here);\n" + // for a plane
-    "      if (howFar < epsilon) {" +
-    "        whoGotHit = 1;" +
-    "        break;" +
-    "      }\n" + // for a plane
+    "      here = eye + (look * distance);" +
+    "      double howFar;\n" +
+    "      for (int index = 0; index < scene_top_level_count; index++) {\n" +
+    "        int objectId = scene_top_level_ids[index];\n" +
+    "        howFar = distance_of(objectId, here);\n" +
+    "        if (howFar < epsilon) {" +
+    "          whoGotHit = objectId;" +
+    "          break;" +
+    "        }\n" +
+    "      }\n" +
     "      distance += howFar * march_ratio;\n" +
     "    }" +
-    "    if (whoGotHit == 1) {\n" +
+    "    if (whoGotHit >= 0) {\n" +
     "        color = checker(here);\n" +
     "    } else {\n" +
     "      color.x = fmaxf(0, 1- look.y*8);\n" + // sky
