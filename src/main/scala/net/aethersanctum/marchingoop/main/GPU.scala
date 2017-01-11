@@ -56,6 +56,8 @@ class GpuDemo(scene:Scene) {
     "    results[out+2] = color.z;\n" +
     "}\n"
 
+  println(kernelMain)
+
   val lookVectorsPerRow = new Array[Double](4 * scene.rendering.screenWidth)
   val colorVectorsPerRow = new Array[Double](4 * scene.rendering.screenWidth)
 
