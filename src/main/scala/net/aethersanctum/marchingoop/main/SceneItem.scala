@@ -17,8 +17,13 @@ object SceneItem {
     maxId
   }
 
+  def max = maxId
+
   def write(items: Seq[SceneItem]) = {
     val buf = new StringBuilder
+    buf.append(s"__constant scene_max_item_id = ${maxId};\n")
+    buf.append(s"__constant int scene_top_level_ids[] = {${items.map(_.id).mkString(", ")}};\n")
+    buf.append(s"__constant int scene_top_level_count = ${items.size};\n\n")
     items.foreach(item => {
       item.supportingDeclarations.foreach(dec =>
         buf.append(dec)
