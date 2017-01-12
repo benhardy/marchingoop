@@ -49,22 +49,9 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "      return normalize(normalish);\n" +
     "}\n"
 
-  val kernelMain = "" +
-    constants +
-    SceneEntity.write(scene.objects) +
-    SceneEntity.writeLights(scene.lights) +
-    normalCalculators +
-    "\n" +
-    "__kernel void " +
-    "sampleKernel(__global double *eye_p,\n" +
-    "             __global double *look_p,\n" +
-    "             __global double *results)\n" +
-    "{\n" +
-    "    int in = get_global_id(0);\n" +
-    "" +
+  val marcher = "" +
+    "double4 march(double4 eye, double4 look) {" +
     "    double4 color = {0,0,0,0};\n" +
-    "    double4 eye =  vload4(0, eye_p);\n" +
-    "    double4 look = vload4(in, look_p);\n" +
     "    double distance = epsilon*2;\n" +
     "    double4 here;\n" +
     "    int closestObject = -1;\n" +
@@ -92,6 +79,26 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "      double4 illum = total_illumination(here, norm);\n"+
     "      color = illum * pigment_of(whoGotHit, here);\n" +
     "    }\n" +
+    "    return color;\n" +
+    "}"
+
+  val kernelMain = "" +
+    constants +
+    SceneEntity.write(scene.objects) +
+    SceneEntity.writeLights(scene.lights) +
+    normalCalculators +
+    marcher +
+    "\n" +
+    "__kernel void " +
+    "sampleKernel(__global double *eye_p,\n" +
+    "             __global double *look_p,\n" +
+    "             __global double *results)\n" +
+    "{\n" +
+    "    int in = get_global_id(0);\n" +
+    "" +
+    "    double4 eye =  vload4(0, eye_p);\n" +
+    "    double4 look = vload4(in, look_p);\n" +
+    "    double4 color = march(eye, look);" +
     "    int out = 4* in;\n" +
     "    results[out] = color.x;\n" +
     "    results[out+1] = color.y;\n" +
