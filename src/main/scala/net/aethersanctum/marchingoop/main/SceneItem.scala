@@ -5,7 +5,7 @@ import scala.collection.mutable
 sealed trait SceneEntity {
   val id = SceneEntity.nextId
   def name: String = "entity" + id
-  def supportingDeclarations: List[String] = Nil
+  def declarations: List[String] = List(functionWhole)
   def functionName = name
   def functionBody: String
   def functionWhole: String
@@ -18,15 +18,13 @@ abstract class Pigment extends SceneEntity {
 
 object Pigment {
   case class RGB(red:Double, green:Double, blue:Double) extends Pigment {
-    override def supportingDeclarations: List[String] = List(
-      s"__constant double4 ${name}_rgb = { ${red}, ${green}, ${blue}, 1};\n"
-    )
+    override def declarations: List[String] =
+      s"__constant double4 ${name}_rgb = { ${red}, ${green}, ${blue}, 1};\n" :: super.declarations
+
     override def functionBody = s"return ${name}_rgb;"
   }
   case class Checker(pigmentA: Pigment, pigmentB: Pigment) extends Pigment {
-    override def supportingDeclarations = pigmentA.supportingDeclarations ++
-      pigmentB.supportingDeclarations ++
-      List(pigmentA.functionWhole, pigmentB.functionWhole)
+    override def declarations = pigmentA.declarations ++ pigmentB.declarations ++ super.declarations
 
     override def functionBody = "  int px = point.x - floor(point.x) > 0.5 ? 1 :0;\n" +
       "  int py = point.y - floor(point.y) > 0.5 ? 1 :0;\n" +
@@ -34,8 +32,7 @@ object Pigment {
       s"  return px ^ py ^ pz ? ${pigmentA.functionName}(point) : ${pigmentB.functionName}(point);"
   }
   case class Grid(pigmentA: Pigment) extends Pigment {
-    override def supportingDeclarations = pigmentA.supportingDeclarations ++
-      List(pigmentA.functionWhole)
+    override def declarations = pigmentA.declarations ++ super.declarations
 
     override def functionBody = "  double px = fabs(point.x - floor(point.x) - 0.5);\n" +
       "  double py = fabs(point.y - floor(point.y) - 0.5);\n" +
@@ -80,12 +77,12 @@ object SceneEntity {
     }
 
     items.foreach(item => {
-      item.supportingDeclarations.foreach(writeOnce)
+      item.declarations.foreach(writeOnce)
       writeOnce(item.functionWhole)
     })
     val defaultPigmentName = Pigment.DEFAULT.functionWhole
     if (!done.contains(defaultPigmentName)) {
-      Pigment.DEFAULT.supportingDeclarations.foreach(writeOnce)
+      Pigment.DEFAULT.declarations.foreach(writeOnce)
       writeOnce(Pigment.DEFAULT.functionWhole)
     }
 
@@ -112,20 +109,20 @@ object SceneEntity {
 case class Plane(normal:Vector, offset:Double
                  , override val pigment:Pigment) extends SceneObject {
   override def name = "plane" + id
-  override def supportingDeclarations = List(
+  override def declarations = List(
     s"__constant double4 ${name}_normal = {${normal.x}, ${normal.y}, ${normal.z}, 0};\n",
     s"__constant double ${name}_offset = ${offset};\n"
-  ) ++ pigment.supportingDeclarations ++ List(pigment.functionWhole)
+  ) ++ pigment.declarations ++ super.declarations
   override def functionBody = s"return dot(${name}_normal, point) + ${name}_offset;"
 }
 
 case class Sphere(center:Vector, radius:Double
                   , override val pigment:Pigment) extends SceneObject {
   override def name = "sphere" + id
-  override def supportingDeclarations = List(
+  override def declarations = List(
     s"__constant double4 ${name}_center = {${center.x}, ${center.y}, ${center.z}, 0};\n",
     s"__constant double ${name}_radius = ${radius};\n"
-  ) ++ pigment.supportingDeclarations ++ List(pigment.functionWhole)
+  ) ++ pigment.declarations ++ super.declarations
   override def functionBody = s"return distance(${name}_center, point) - ${name}_radius;"
 }
 
