@@ -46,6 +46,21 @@ object Pigment {
   implicit val DEFAULT = BLACK
 }
 
+case class Light(color:Vector, location:Vector) extends SceneEntity {
+  override def name = "light_" + id
+
+  override def functionBody: String = "" +
+    s"double strength = 1 / pow(distance(point, ${name}_location), 2);\n" +
+    s"return ${name}_color * strength;"
+
+  override def declarations: List[String] =
+    s"__constant double4 ${name}_color = { ${color.x}, ${color.y}, ${color.z}, 0};\n" ::
+    s"__constant double4 ${name}_location = { ${location.x}, ${location.y}, ${location.z}, 0};\n" ::
+       super.declarations
+
+  def functionWhole: String = s"double4 ${functionName}_illumination(double4 point) {\n    ${functionBody}\n}\n";
+}
+
 abstract class SceneObject extends SceneEntity {
   def pigment:Pigment = Pigment.DEFAULT
   override def functionName = name + "_distance"
@@ -102,6 +117,27 @@ object SceneEntity {
     buf.append(s"       default: return ${Pigment.DEFAULT.functionName}(pos);\n")
     buf.append("   }\n")
     buf.append("}")
+    buf.toString()
+  }
+  def writeLights(lights:Seq[Light]): String = {
+    val buf = new mutable.StringBuilder()
+    for (light <-lights; decl <- light.declarations) {
+      buf.append(decl)
+    }
+    buf.toString()
+    buf.append("double4 total_illumination(double4 pos, double4 normal) {\n")
+    buf.append("   double4 total = { 0,0,0,0};\n")
+    buf.append("   double4 delta;\n")
+    buf.append("   double dotp, dist;\n")
+    lights.foreach(light => {
+      buf.append(s"  delta = ${light.name}_location - pos;\n")
+      buf.append(s"  dist = length(delta);\n")
+      buf.append(s"  dotp = dot(normal, normalize(delta));\n")
+      buf.append(s"  if (dotp > 0) {" +
+        s"total += dotp * ${light.name}_color / (dist * dist); }\n")
+    })
+    buf.append(s"  return 1000 * total;\n")
+    buf.append("}\n")
     buf.toString()
   }
 }

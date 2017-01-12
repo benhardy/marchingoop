@@ -8,8 +8,52 @@ import org.jocl._
 
 class GpuDemo(scene:Scene, rendering:Rendering) {
 
+  val constants = "" +
+    "__constant double epsilon = 0.0001;\n" +
+    "__constant double normal_epsilon = 0.0000001;\n" +
+    "__constant int step_max = 500;\n" +
+    "__constant double march_ratio = 0.8;\n"
+
+  val normalCalculators = "" +
+    "double distanceForNormal(double4 eye, double4 look, int whoGotHit, double distMax) {\n" +
+    "    double distance = epsilon * 2;\n" +
+    "    double4 here;\n" +
+    "    for (int step = 0; step < step_max && distance > epsilon && distance <distMax; step++) {\n" +
+    "      here = eye + (look * distance);\n" +
+    "      double howFar = distance_of(whoGotHit, here);\n" +
+    "      if (howFar < epsilon) {\n" +
+    "        return distance;\n" +
+    "      }\n" +
+    "      distance += howFar * march_ratio;\n" +
+    "    }\n" +
+    "    return -1;\n" +
+    "}\n" +
+    "__constant double4 NO_NORMAL = {0.0, 0.0, 0.0, 1.0};\n" +
+    "double4 calculateNormal(double4 eye, double4 look, int whoGotHit, double distMax) {\n" +
+    "      double4 slightlyLeft =    { look.x - normal_epsilon, look.y, look.z, 0 };\n" +
+    "      double4 slightlyRight =   { look.x + normal_epsilon, look.y, look.z, 0 };\n" +
+    "      double4 slightlyDown =    { look.x, look.y - normal_epsilon, look.z, 0 };\n" +
+    "      double4 slightlyUp =      { look.x, look.y + normal_epsilon, look.z, 0 };\n" +
+    "      double4 slightlyBack =    { look.x, look.y, look.z - normal_epsilon, 0 };\n" +
+    "      double4 slightlyForward = { look.x, look.y, look.z + normal_epsilon, 0 };\n" +
+    "      double leftDist =    distanceForNormal(eye, slightlyLeft, whoGotHit, distMax);\n" +
+    "      double rightDist =   distanceForNormal(eye, slightlyRight,whoGotHit, distMax);\n" +
+    "      double upDist =      distanceForNormal(eye, slightlyUp,   whoGotHit, distMax);\n" +
+    "      double downDist =    distanceForNormal(eye, slightlyDown, whoGotHit, distMax);\n" +
+    "      double backDist =    distanceForNormal(eye, slightlyBack, whoGotHit, distMax);\n" +
+    "      double forwardDist = distanceForNormal(eye, slightlyForward, whoGotHit, distMax);\n" +
+    "      //if (leftDist<0 || rightDist <0 || upDist < 0 || downDist < 0 || backDist < 0 || forwardDist < 0) {\n" +
+    "      //  return NO_NORMAL;\n" +
+    "      //}\n" +
+    "      double4 normalish = {rightDist-leftDist, upDist-downDist, forwardDist - backDist, 0};\n" +
+    "      return normalize(normalish);\n" +
+    "}\n"
+
   val kernelMain = "" +
+    constants +
     SceneEntity.write(scene.objects) +
+    SceneEntity.writeLights(scene.lights) +
+    normalCalculators +
     "\n" +
     "__kernel void " +
     "sampleKernel(__global double *eye_p,\n" +
@@ -18,13 +62,10 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "{\n" +
     "    int in = get_global_id(0);\n" +
     "" +
-    "    double4 color;\n" +
+    "    double4 color = {0,0,0,0};\n" +
     "    double4 eye =  vload4(0, eye_p);\n" +
     "    double4 look = vload4(in, look_p);\n" +
-    "    double epsilon = 0.0001;\n" +
-    "    int step_max = 500;\n" +
     "    double distance = epsilon*2;\n" +
-    "    double march_ratio = 0.5;\n" +
     "    double4 here;\n" +
     "    int closestObject = -1;\n" +
     "    int whoGotHit = -1;\n" +
@@ -45,8 +86,12 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "        }\n" +
     "      }\n" +
     "      distance += bestCloseness * march_ratio;\n" +
-    "    }" +
-    "    color = pigment_of(whoGotHit, here);\n" +
+    "    }\n" +
+    "    if (whoGotHit > 0) {\n" +
+    "      double4 norm = calculateNormal(eye, look, whoGotHit, distance *1.2);\n" +
+    "      double4 illum = total_illumination(here, norm);\n"+
+    "      color = illum * pigment_of(whoGotHit, here);\n" +
+    "    }\n" +
     "    int out = 4* in;\n" +
     "    results[out] = color.x;\n" +
     "    results[out+1] = color.y;\n" +
@@ -161,10 +206,13 @@ object GpuDemo {
     val rendering = new Rendering(640, 480)
     val camera = new Camera(rendering = rendering, location = Vector(0, 1, -10), lookAt = Vector.Z)
     val MAGENTA = Pigment.RGB(1,0,1)
-    val scene = new Scene(camera, List(
-      Plane(Vector.Y, 0, Grid(MAGENTA)),
-      Sphere(Vector(-1, 1, 2), 5, Pigment.RED)
-    ))
+    val scene = new Scene(camera,
+      objects = List(
+        Plane(Vector.Y, 0, Grid(MAGENTA)),
+        Sphere(Vector(-1, 1, 2), 5, Pigment.RED)
+      ),
+      lights = Light(color = Vector(1,1,1), location = Vector(20,20,-10)) :: Nil
+    )
     val demo = new GpuDemo(scene, rendering)
     try {
       demo.run
