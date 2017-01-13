@@ -162,3 +162,10 @@ case class Sphere(center:Vector, radius:Double
   override def functionBody = s"return distance(${name}_center, point) - ${name}_radius;"
 }
 
+case class RadialRidge(victim:SceneObject) extends SceneObject {
+  override def name = "modify_ridge_" + id
+  override def declarations = victim.declarations ++ super.declarations
+  override def functionBody = s"return ${victim.functionName}(point) - 0.05*pow(fabs(sin(20*atan2(point.z, point.x))), 2);"
+
+  override def pigment = victim.pigment
+}

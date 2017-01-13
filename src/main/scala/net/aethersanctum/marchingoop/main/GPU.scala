@@ -216,9 +216,10 @@ object GpuDemo {
     val scene = new Scene(camera,
       objects = List(
         Plane(Vector.Y, 0, Grid(MAGENTA)),
-        Sphere(Vector(-1, 1, 2), 5, Pigment.RED)
+        RadialRidge(Sphere(Vector(-1, 1, 2), 5, Pigment.RGB(1.0, 0.8, 0.6)))
       ),
-      lights = Light(color = Vector(1,1,1), location = Vector(20,20,-10)) :: Nil
+      lights = Light(color = Vector(1,1,1) *5, location = Vector(20,20,-10)) ::
+        Light(color = Vector(0.1, 0.1, 1)*1, location = Vector(-5, 0.1, -1)) :: Nil
     )
     val demo = new GpuDemo(scene, rendering)
     try {
