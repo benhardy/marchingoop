@@ -2,7 +2,7 @@ package net.aethersanctum.marchingoop.main
 
 import java.awt.Color
 
-import net.aethersanctum.marchingoop.main.Pigment.Grid
+import net.aethersanctum.marchingoop.main.Pigment.{Checker, WHITE}
 import org.jocl.CL._
 import org.jocl._
 
@@ -11,8 +11,13 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
   val constants = "" +
     "__constant double epsilon = 0.0001;\n" +
     "__constant double normal_epsilon = 0.0000001;\n" +
-    "__constant int step_max = 500;\n" +
-    "__constant double march_ratio = 0.8;\n"
+    "__constant int step_max = 1000;\n" +
+    "__constant double march_ratio = 0.8;\n" +
+    "__constant double4 NO_NORMAL = {0.0, 0.0, 0.0, 1.0};\n" +
+    "double distanceForNormal(double4 eye, double4 look, int whoGotHit, double distMax);\n" +
+    "double4 calculateNormal(double4 eye, double4 look, int whoGotHit, double distMax);\n" +
+    "double4 march(double4 eye, double4 look);" +
+    "int findAnyCollision(double4 eye, double4 look, double max_dist);\n"
 
   val normalCalculators = "" +
     "double distanceForNormal(double4 eye, double4 look, int whoGotHit, double distMax) {\n" +
@@ -28,7 +33,6 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "    }\n" +
     "    return -1;\n" +
     "}\n" +
-    "__constant double4 NO_NORMAL = {0.0, 0.0, 0.0, 1.0};\n" +
     "double4 calculateNormal(double4 eye, double4 look, int whoGotHit, double distMax) {\n" +
     "      double4 slightlyLeft =    { look.x - normal_epsilon, look.y, look.z, 0 };\n" +
     "      double4 slightlyRight =   { look.x + normal_epsilon, look.y, look.z, 0 };\n" +
@@ -48,6 +52,29 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     "      double4 normalish = {rightDist-leftDist, upDist-downDist, forwardDist - backDist, 0};\n" +
     "      return normalize(normalish);\n" +
     "}\n"
+
+  val collisionFinderOnly = "" +
+    "int findAnyCollision(double4 eye, double4 look, double max_dist) {" +
+    "    double distance = epsilon*100;\n" +
+    "    double4 here;\n" +
+    "    double bestCloseness = 100000;\n" +
+    "    for (int step = 0; step < step_max && distance < 100000; step++) {\n" +
+    "      here = eye + (look * distance);" +
+    "      double closeness;\n" +
+    "      for (int index = 0; index < scene_top_level_count; index++) {\n" +
+    "        int objectId = scene_top_level_ids[index];\n" +
+    "        closeness = distance_of(objectId, here);\n" +
+    "        if (closeness < epsilon) {\n" +
+    "          return objectId;\n" +
+    "        }\n" +
+    "        if (closeness < bestCloseness) {\n" +
+    "          bestCloseness = closeness;\n" +
+    "        }\n" +
+    "      }\n" +
+    "      distance += bestCloseness * march_ratio;\n" +
+    "    }\n" +
+    "    return -1;\n" +
+    "}"
 
   val marcher = "" +
     "double4 march(double4 eye, double4 look) {" +
@@ -87,6 +114,7 @@ class GpuDemo(scene:Scene, rendering:Rendering) {
     SceneEntity.write(scene.objects) +
     SceneEntity.writeLights(scene.lights) +
     normalCalculators +
+    collisionFinderOnly +
     marcher +
     "\n" +
     "__kernel void " +
@@ -210,16 +238,16 @@ object GpuDemo {
     */
   def main(args: Array[String]) = {
 
-    val rendering = new Rendering(640, 480)
-    val camera = new Camera(rendering = rendering, location = Vector(0, 1, -10), lookAt = Vector.Z)
+    val rendering = new Rendering(400, 300)
+    val camera = new Camera(rendering = rendering, location = Vector(0, 10, -10), lookAt = Vector(0,-10,10).norm)
     val MAGENTA = Pigment.RGB(1,0,1)
     val scene = new Scene(camera,
       objects = List(
-        Plane(Vector.Y, 0, Grid(MAGENTA)),
+        Plane(Vector.Y, 0, Checker(MAGENTA, WHITE)),
         RadialRidge(Sphere(Vector(-1, 1, 2), 5, Pigment.RGB(1.0, 0.8, 0.6)))
       ),
       lights = Light(color = Vector(1,1,1) *5, location = Vector(20,20,-10)) ::
-        Light(color = Vector(0.1, 0.1, 1)*1, location = Vector(-5, 0.1, -1)) :: Nil
+        Light(color = Vector(0.1, 0.1, 1)*1, location = Vector(-5, 0.1, -5)) :: Nil
     )
     val demo = new GpuDemo(scene, rendering)
     try {

@@ -129,14 +129,17 @@ object SceneEntity {
     buf.append("   double4 total = { 0,0,0,0};\n")
     buf.append("   double4 delta;\n")
     buf.append("   double dotp, dist;\n")
+    buf.append("   int collision;\n")
     lights.foreach(light => {
       buf.append(s"  delta = ${light.name}_location - pos;\n")
       buf.append(s"  dist = length(delta);\n")
+      buf.append(s"  collision = findAnyCollision(pos, normalize(delta), 100000);\n")
       buf.append(s"  dotp = dot(normal, normalize(delta));\n")
-      buf.append(s"  if (dotp > 0) {" +
-        s"total += dotp * ${light.name}_color / (dist * dist); }\n")
+      buf.append(s"  if (dotp > 0 && collision < 0) {" +
+        s"total += dotp * ${light.name}_color / (dist * dist); \n" +
+        s"}\n")
     })
-    buf.append(s"  return 1000 * total;\n")
+    buf.append(s"  return 100 * total;\n")
     buf.append("}\n")
     buf.toString()
   }
